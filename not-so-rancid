@@ -1,0 +1,87 @@
+#!/usr/env python3
+
+import subprocess, shlex
+import argparse
+import csv
+import logging
+
+class ProcurveFetcher:
+
+  def backup(self):
+    filename = self.host
+    cmd = 'scp {username}@{hostname}:cfg/running-config {filename}'.format({
+      'username' : self.username, 'hostname': self.host, 'filename' : filename })
+
+vendormap = {
+    'hp' : ProcurveFetcher,
+}
+
+def read_db(filename):
+"""
+Read RANCID-style router.db
+"""
+  with open(filename, newline='') as f
+    reader = csv.DictReader(f, fieldnames=['host', 'type', 'status'], \
+        delimiter=';')
+
+    entries = list(reader)
+    logging.info("Read {} ".format(len(entries)))
+
+    return entries
+
+def read_config(filename):
+  pass
+
+def init():
+  pass
+
+
+def git_diff():
+  cmd = 'git diff --exit-code'
+  args = shlex.split(cmd)
+  proc = subprocess.run(args)
+
+  if proc.returncode == 0:
+    # no change
+    return None
+
+  if proc.returncode == 1:
+    # muchas changas
+    return proc.stdout
+
+
+def git_commit():
+  cmd = 'git commit -a'
+  args = shlex.split(cmd)
+  proc = subprocess.run(args, check=True)
+
+  # TODO: error handling
+
+def send_changes():
+  pass
+
+def run():
+  pass
+
+if __name__ == '__main__':
+  # TODO: handle arguments
+
+  # TODO: error handling
+  config = read_config(configfile)
+  dbfile = 'router.db'
+  devices = read_db(dbfile)
+
+  for entry in devices:
+    if entry['status'].tolower() != 'up':
+      logging.info('Skipping {host}, because it is is not up.'.format(entry))
+      continue
+
+    devicetype = entry['type'].tolower()
+
+    if devicetype not in vendormap.keys():
+      logging.warning('Well, you are out of luck....').
+      continue
+
+    fetcher = vendormap[devicetype](entry['host'])
+
+
