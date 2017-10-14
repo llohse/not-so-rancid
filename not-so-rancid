@@ -1,87 +1,137 @@
 #!/usr/env python3
+"""
+
+Homepage and documentation: https://github.com/llohse/not-so-rancid
+
+Copyright 2017, Leon M. Lohse
+License: MIT (see LICENSE for details)
+"""
+
+__author__ = 'Leon M. Lohse'
+__version__ = '0.1dev'
+__license__ = 'MIT'
 
 import subprocess, shlex
 import argparse
-import csv
 import logging
-
-class ProcurveFetcher:
-
-  def backup(self):
-    filename = self.host
-    cmd = 'scp {username}@{hostname}:cfg/running-config {filename}'.format({
-      'username' : self.username, 'hostname': self.host, 'filename' : filename })
-
-vendormap = {
-    'hp' : ProcurveFetcher,
-}
-
-def read_db(filename):
-"""
-Read RANCID-style router.db
-"""
-  with open(filename, newline='') as f
-    reader = csv.DictReader(f, fieldnames=['host', 'type', 'status'], \
-        delimiter=';')
-
-    entries = list(reader)
-    logging.info("Read {} ".format(len(entries)))
-
-    return entries
+import os.path
+import configparser
 
 def read_config(filename):
-  pass
 
-def init():
-  pass
+  return config
 
-
-def git_diff():
-  cmd = 'git diff --exit-code'
+def git_add_a(path):
+  """ run `git add -A` """
+  cmd = 'git -C {path} add -A'.format(path=path)
+  logging.info("Running `{}` ".format(cmd))
   args = shlex.split(cmd)
-  proc = subprocess.run(args)
+  proc = subprocess.run(args, check=True)
+
+def git_push(path):
+  cmd = 'git -C {path} push'.format(path=path)
+  logging.info("Running `{}` ".format(cmd))
+  args = shlex.split(cmd)
+  proc = subprocess.run(args, check=True)
+
+
+def git_diff(path):
+  """ run `git diff --exit-code --cached` """
+  cmd = 'git -C {path} diff --exit-code --cached'.format(path=path)
+  logging.info("Running `{}` ".format(cmd))
+  args = shlex.split(cmd)
+  proc = subprocess.run(args, stdout=subprocess.PIPE)
 
   if proc.returncode == 0:
     # no change
+    logging.debug('No change')
     return None
 
   if proc.returncode == 1:
     # muchas changas
+    logging.debug('Muchas changas')
     return proc.stdout
 
 
-def git_commit():
-  cmd = 'git commit -a'
+def git_commit(path):
+  """ run `git commit` """
+  cmd = 'git -C {path} commit -m"Configuration changes detected"'.format(path=path)
+  logging.info("Running `{}` ".format(cmd))
   args = shlex.split(cmd)
   proc = subprocess.run(args, check=True)
 
   # TODO: error handling
 
-def send_changes():
-  pass
+def parse_devices(devices_file):
+  logging.info('Reading devices file {}'.format(devices_file))
+  devices_config = configparser.ConfigParser()
+  with open(devices_file) as f:
+    devices_config.read_file(f, source=devices_file)
 
-def run():
-  pass
+  device_names = devices_config.sections()
+  logging.debug('Devices configured: {}'.format(len(device_names)))
+
+  devices = []
+  for d in device_names:
+    d_conf = devices_config[d]
+    device = { 'name' : d,
+               'username' : d_conf['username'],
+               'address' : d_conf.get('address', fallback=d),
+               'retries' : d_conf['retries'],
+               'command' : d_conf['command'],
+               'success' : False }
+
+    devices.append(device)
+
+  return devices
+
+def run(devices, path):
+
+  # fetch all devices
+  # TODO: make async
+  for device in devices:
+    lpath = os.path.join(path, device['name'])
+    cmd = device['command'].format(user=device['username'],
+                                   address=device['address'],
+                                   lpath=lpath)
+    logging.debug("Running `{}` ".format(cmd))
+    args = shlex.split(cmd)
+    try:
+      proc = subprocess.run(args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=True)
+      device['success'] = True
+    except subprocess.CalledProcessError as err:
+      logging.warning(err.stderr.decode())
+
+    # TODO retry
+  
+
+  # add new files
+  git_add_a(path)
+
+  changes = git_diff(path)
+
+  if changes != None:
+    logging.info("Commiting changes...")
+    git_commit(path)
+    git_push(path)
 
 if __name__ == '__main__':
-  # TODO: handle arguments
+  parser = argparse.ArgumentParser(description='Backup network configuration')
+  parser.add_argument('--configuration-file', '-c', dest='configfile', default='/etc/not-so-rancid.conf')
+
+  logging.basicConfig(level=logging.DEBUG)
+
+  args = parser.parse_args()
 
   # TODO: error handling
-  config = read_config(configfile)
-  dbfile = 'router.db'
-  devices = read_db(dbfile)
+  logging.info('Reading config file {}'.format(args.configfile))
+  config = configparser.ConfigParser()
+  with open(args.configfile) as f:
+    config.read_file(f, source=args.configfile)
 
-  for entry in devices:
-    if entry['status'].tolower() != 'up':
-      logging.info('Skipping {host}, because it is is not up.'.format(entry))
-      continue
+  devices_file = config['global']['devices']
+  basedir = config['global']['basedir']
 
-    devicetype = entry['type'].tolower()
+  devices = parse_devices(devices_file)
 
-    if devicetype not in vendormap.keys():
-      logging.warning('Well, you are out of luck....').
-      continue
-
-    fetcher = vendormap[devicetype](entry['host'])
-
-
+  run(devices, basedir)
