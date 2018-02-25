@@ -63,7 +63,7 @@ def git_commit(path):
     cmd = 'git -C {path} commit -m"Configuration changes detected"'.format(path=path)
     logger.debug("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
-    proc = subprocess.run(args, check=True)
+    proc = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True, check=True)
 
 class Device():
     def __init__(self, name, username, address, command):
