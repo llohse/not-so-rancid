@@ -31,7 +31,7 @@ def git_add_a(path):
     cmd = 'git -C {path} add -A'.format(path=path)
     logger.info("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
-    proc = subprocess.run(args, check=True)
+    proc = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True, check=True)
 
 
 def git_push(path):
@@ -39,7 +39,7 @@ def git_push(path):
     cmd = 'git -C {path} push'.format(path=path)
     logger.info("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
-    proc = subprocess.run(args, check=True)
+    proc = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True, check=True)
 
 
 def git_diff(path):
@@ -47,7 +47,7 @@ def git_diff(path):
     cmd = 'git -C {path} diff --exit-code --cached'.format(path=path)
     logger.info("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
-    proc = subprocess.run(args, stdout=subprocess.PIPE)
+    proc = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True)
 
     if proc.returncode == 0:
         # no change
@@ -133,7 +133,8 @@ def run(devices, path):
        if not d.success:
            failures.append(d)
 
-    logger.info("Failed to fetch config from {}/{} devices".format(len(failures), len(res_devices)))
+    if len(failures) > 0:
+        logger.error("Failed to fetch config from {}/{} devices".format(len(failures), len(res_devices)))
 
     # add new files
     git_add_a(path)
