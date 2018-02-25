@@ -120,8 +120,8 @@ def fetch(devices, path):
         else:
             device.success = False
             device.error = errs
-            logging.debug("Failed to get config from {}".format(device.name))
-            logging.debug(errs)
+            logging.error("Failed to get config from {}".format(device.name))
+            logging.error(errs)
 
     return devices
 
