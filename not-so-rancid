@@ -29,7 +29,7 @@ logger = logging.getLogger('not-so-rancid')
 def git_add_a(path):
     """ run `git add -A` with parameters """
     cmd = 'git -C {path} add -A'.format(path=path)
-    logger.info("Running `{}` ".format(cmd))
+    logger.debug("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
     proc = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True, check=True)
 
@@ -37,7 +37,7 @@ def git_add_a(path):
 def git_push(path):
     """ run `git push` with parameters """
     cmd = 'git -C {path} push'.format(path=path)
-    logger.info("Running `{}` ".format(cmd))
+    logger.debug("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
     proc = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True, check=True)
 
@@ -45,7 +45,7 @@ def git_push(path):
 def git_diff(path):
     """ run `git diff --exit-code --cached` """
     cmd = 'git -C {path} diff --exit-code --cached'.format(path=path)
-    logger.info("Running `{}` ".format(cmd))
+    logger.debug("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
     proc = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True)
 
@@ -61,7 +61,7 @@ def git_diff(path):
 def git_commit(path):
     """ run `git commit` """
     cmd = 'git -C {path} commit -m"Configuration changes detected"'.format(path=path)
-    logger.info("Running `{}` ".format(cmd))
+    logger.debug("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
     proc = subprocess.run(args, check=True)
 
