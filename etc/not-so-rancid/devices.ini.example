@@ -1,0 +1,22 @@
+[DEFAULT]
+username = admin
+command = modules/hp-procurve-scp.sh {address} {lpath} {user}
+
+[switch-8]
+[switch-10-105]
+[switch-12-103]
+[switch-12-117]
+[switch-12-217]
+[switch-14-103]
+[switch-14-111]
+[switch-14-117]
+[switch-16-113]
+[switch-16-135]
+[switch-16-143]
+[switch-18-103]
+[switch-20-103]
+[switch-22-10]
+[switch-24-106]
+[switch-serverrack]
+[switch-mc1]
+[switch-zulu]
