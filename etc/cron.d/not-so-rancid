@@ -1,0 +1,3 @@
+# run config fetcher hourly
+1 * * * * root /usr/local/bin/not-so-rancid | ifne mail -s "not-so-rancid problem" root
+

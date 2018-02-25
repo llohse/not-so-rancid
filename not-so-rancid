@@ -1,4 +1,4 @@
-#!/usr/env python3
+#!/usr/bin/env python3
 """
 
 Homepage and documentation: https://github.com/llohse/not-so-rancid
@@ -7,131 +7,167 @@ Copyright 2017, Leon M. Lohse
 License: MIT (see LICENSE for details)
 """
 
-__author__ = 'Leon M. Lohse'
-__version__ = '0.1dev'
-__license__ = 'MIT'
-
-import subprocess, shlex
+import subprocess
+import shlex
 import argparse
 import logging
 import os.path
 import configparser
+import sys
 
-def read_config(filename):
+__author__ = 'Leon M. Lohse'
+__version__ = '0.1dev'
+__license__ = 'MIT'
 
-  return config
+EXIT_FAILURE = 1
+EXIT_SUCCESS = 0
+
+
+logger = logging.getLogger('not-so-rancid')
+
 
 def git_add_a(path):
-  """ run `git add -A` """
-  cmd = 'git -C {path} add -A'.format(path=path)
-  logging.info("Running `{}` ".format(cmd))
-  args = shlex.split(cmd)
-  proc = subprocess.run(args, check=True)
+    """ run `git add -A` with parameters """
+    cmd = 'git -C {path} add -A'.format(path=path)
+    logger.info("Running `{}` ".format(cmd))
+    args = shlex.split(cmd)
+    proc = subprocess.run(args, check=True)
+
 
 def git_push(path):
-  cmd = 'git -C {path} push'.format(path=path)
-  logging.info("Running `{}` ".format(cmd))
-  args = shlex.split(cmd)
-  proc = subprocess.run(args, check=True)
+    """ run `git push` with parameters """
+    cmd = 'git -C {path} push'.format(path=path)
+    logger.info("Running `{}` ".format(cmd))
+    args = shlex.split(cmd)
+    proc = subprocess.run(args, check=True)
 
 
 def git_diff(path):
-  """ run `git diff --exit-code --cached` """
-  cmd = 'git -C {path} diff --exit-code --cached'.format(path=path)
-  logging.info("Running `{}` ".format(cmd))
-  args = shlex.split(cmd)
-  proc = subprocess.run(args, stdout=subprocess.PIPE)
+    """ run `git diff --exit-code --cached` """
+    cmd = 'git -C {path} diff --exit-code --cached'.format(path=path)
+    logger.info("Running `{}` ".format(cmd))
+    args = shlex.split(cmd)
+    proc = subprocess.run(args, stdout=subprocess.PIPE)
 
-  if proc.returncode == 0:
-    # no change
-    logging.debug('No change')
-    return None
+    if proc.returncode == 0:
+        # no change
+        return None
 
-  if proc.returncode == 1:
-    # muchas changas
-    logging.debug('Muchas changas')
-    return proc.stdout
+    if proc.returncode == 1:
+        # muchas changas
+        return proc.stdout
 
 
 def git_commit(path):
-  """ run `git commit` """
-  cmd = 'git -C {path} commit -m"Configuration changes detected"'.format(path=path)
-  logging.info("Running `{}` ".format(cmd))
-  args = shlex.split(cmd)
-  proc = subprocess.run(args, check=True)
+    """ run `git commit` """
+    cmd = 'git -C {path} commit -m"Configuration changes detected"'.format(path=path)
+    logger.info("Running `{}` ".format(cmd))
+    args = shlex.split(cmd)
+    proc = subprocess.run(args, check=True)
 
-  # TODO: error handling
+class Device():
+    def __init__(self, name, username, address, command):
+        self.name = name
+        self.username = username
+        self.address = address
+        self.command = command
+        self.process = None
+        self.error = ""
+        self.success = False
 
 def parse_devices(devices_file):
-  logging.info('Reading devices file {}'.format(devices_file))
-  devices_config = configparser.ConfigParser()
-  with open(devices_file) as f:
-    devices_config.read_file(f, source=devices_file)
+    logging.info('Reading devices file {}'.format(devices_file))
+    devices_config = configparser.ConfigParser()
+    try:
+        with open(devices_file) as f:
+            devices_config.read_file(f, source=devices_file)
+    except OSError as e:
+        logger.error(e.strerror)
+        sys.exit(1)
 
-  device_names = devices_config.sections()
-  logging.debug('Devices configured: {}'.format(len(device_names)))
+    device_names = devices_config.sections()
+    logger.debug('Number of configured devices: {}'.format(len(device_names)))
 
-  devices = []
-  for d in device_names:
-    d_conf = devices_config[d]
-    device = { 'name' : d,
-               'username' : d_conf['username'],
-               'address' : d_conf.get('address', fallback=d),
-               'retries' : d_conf['retries'],
-               'command' : d_conf['command'],
-               'success' : False }
+    devices = []
+    for d in device_names:
+        d_conf = devices_config[d]
+        device = Device(d, d_conf['username'], d_conf.get('address', fallback=d), d_conf['command'])
+        devices.append(device)
 
-    devices.append(device)
+    return devices
 
-  return devices
+
+def fetch(devices, path):
+    """ fetch all devices """
+
+    for device in devices:
+        lpath = os.path.join(path, device.name)
+        cmd = device.command.format(user=device.username,
+                                       address=device.address,
+                                       lpath=lpath)
+        logger.debug("Running `{}` ".format(cmd))
+        args = shlex.split(cmd)
+        p = subprocess.Popen(args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+        device.process = p
+
+    logger.debug("Waiting for processes to finish")
+    for device in devices:
+        p = device.process
+        assert isinstance(p, subprocess.Popen)
+        outs, errs = p.communicate()
+        if p.returncode == 0:
+            device.success = True
+        else:
+            device.success = False
+            device.error = errs
+            logging.debug("Failed to get config from {}".format(device.name))
+            logging.debug(errs)
+
+    return devices
 
 def run(devices, path):
+    res_devices = fetch(devices, path)
 
-  # fetch all devices
-  # TODO: make async
-  for device in devices:
-    lpath = os.path.join(path, device['name'])
-    cmd = device['command'].format(user=device['username'],
-                                   address=device['address'],
-                                   lpath=lpath)
-    logging.debug("Running `{}` ".format(cmd))
-    args = shlex.split(cmd)
-    try:
-      proc = subprocess.run(args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=True)
-      device['success'] = True
-    except subprocess.CalledProcessError as err:
-      logging.warning(err.stderr.decode())
+    failures = []
+    for d in res_devices:
+       if not d.success:
+           failures.append(d)
 
-    # TODO retry
-  
+    logger.info("Failed to fetch config from {}/{} devices".format(len(failures), len(res_devices)))
 
-  # add new files
-  git_add_a(path)
+    # add new files
+    git_add_a(path)
 
-  changes = git_diff(path)
+    changes = git_diff(path)
 
-  if changes != None:
-    logging.info("Commiting changes...")
-    git_commit(path)
-    git_push(path)
+    if changes is not None:
+        logger.info("Committing changes...")
+        git_commit(path)
+        git_push(path)
+
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Backup network configuration')
-  parser.add_argument('--configuration-file', '-c', dest='configfile', default='/etc/not-so-rancid.conf')
+    parser = argparse.ArgumentParser(description='Backup network configuration')
+    parser.add_argument('--devices-file', '-d', dest='devicesfile', default='/etc/not-so-rancid.devices.conf')
+    parser.add_argument('--base', '-b', dest='basedir', default='/var/lib/not-so-rancid/')
+    parser.add_argument('--debug', '-D', dest='debug', action='store_true')
+    parser.add_argument('--cron', '-C', dest='cron', action='store_true')
 
-  logging.basicConfig(level=logging.DEBUG)
+    args = parser.parse_args()
 
-  args = parser.parse_args()
+    # configure logger
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
 
-  # TODO: error handling
-  logging.info('Reading config file {}'.format(args.configfile))
-  config = configparser.ConfigParser()
-  with open(args.configfile) as f:
-    config.read_file(f, source=args.configfile)
+    # some checks
+    if not os.path.isdir(args.basedir):
+        logger.error('`{}` is not an existing directory.'.format(args.basedir))
+        sys.exit(EXIT_FAILURE)
 
-  devices_file = config['global']['devices']
-  basedir = config['global']['basedir']
+    devices = parse_devices(args.devicesfile)
 
-  devices = parse_devices(devices_file)
+    run(devices, args.basedir)
 
-  run(devices, basedir)
+    sys.exit(EXIT_SUCCESS)
