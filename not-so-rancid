@@ -148,8 +148,8 @@ def run(devices, path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Backup network configuration')
-    parser.add_argument('--devices-file', '-d', dest='devicesfile', default='/etc/not-so-rancid.devices.conf')
-    parser.add_argument('--base', '-b', dest='basedir', default='/var/lib/not-so-rancid/')
+    parser.add_argument('--devices-file', '-d', dest='devicesfile', default='/etc/not-so-rancid/.devices.ini')
+    parser.add_argument('--base', '-b', dest='basedir', default='/var/opt/not-so-rancid/')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true')
     parser.add_argument('--cron', '-C', dest='cron', action='store_true')
 
