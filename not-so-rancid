@@ -36,7 +36,7 @@ def git_add_a(path):
 
 def git_push(path):
     """ run `git push` with parameters """
-    cmd = 'git -C {path} push'.format(path=path)
+    cmd = 'git -C {path} push --porcelain'.format(path=path)
     logger.debug("Running `{}` ".format(cmd))
     args = shlex.split(cmd)
     proc = subprocess.run(args, stdout=subprocess.PIPE, check=True)
