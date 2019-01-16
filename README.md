@@ -8,14 +8,10 @@ It only works with *modern* devices that offer a simple way to obtain the config
 
 * Fetch configuration from network devices
 * Commit the configuration to a git repository
-
-So far, only HPE Procurve devices are supported but not-so-rancid can easily be extended.
-Device definitions and configuration are read from .ini-style files.
-
-## Planned features
-
-* Conversion from RANCID router.db
 * Error reporting by E-Mail
+
+Device definitions are read from .ini-style files.
+The commands for fetching of the configuration must be configured in the device definitions. For many modern switches (for example Aruba Procurve) this boils down to a single `scp` call (see example).
 
 ## No-features
 
@@ -32,5 +28,5 @@ You are a bad person. Stop doing IT! Stop reproducing!
 ### Legacy devices
 If you want to backup legacy devices, continue to use RANCID. Sorry...
 
-## CVS / SVN
-What the actual fuck? Seriously? It is 2018.
+### CVS / SVN
+What the actual fuck? Seriously? The 90s are over.
