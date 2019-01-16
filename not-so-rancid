@@ -76,7 +76,7 @@ class Device():
         self.success = False
 
 def parse_devices(devices_file):
-    logging.info('Reading devices file {}'.format(devices_file))
+    logger.info('Reading devices file {}'.format(devices_file))
     devices_config = configparser.ConfigParser()
     try:
         with open(devices_file) as f:
@@ -120,8 +120,8 @@ def fetch(devices, path):
         else:
             device.success = False
             device.error = errs
-            logging.error("Failed to get config from {}".format(device.name))
-            logging.error(errs)
+            logger.error("Failed to get config from {}".format(device.name))
+            logger.error(errs)
 
     return devices
 
@@ -157,10 +157,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # configure logger
+    handler = logging.StreamHandler(sys.stdout)
+    logger.setLevel(logging.DEBUG)
+    handler.setLevel(logging.INFO)
+    if args.cron:
+        handler.setLevel(logging.WARNING)
     if args.debug:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
+        handler.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
 
     # some checks
     if not os.path.isdir(args.basedir):
